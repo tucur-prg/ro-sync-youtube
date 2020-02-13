@@ -4,9 +4,10 @@ const express = require("express");
 const app = express();
 const server = app.listen(process.env.PORT);
 
-const io = require('socket.io')(server);
+const io = require("socket.io")(server);
 
-app.use(express.static("public"));
+app.set("views", process.cwd() + "/views");
+app.set("view engine", "ejs");
 
 app.get("/", function(req, res) {
   res.sendFile(__dirname + "/views/index.html");
@@ -34,7 +35,7 @@ app.get("/redirect", function(req, res) {
 });
 app.get("/sync/:id", function(req, res) {
 
-  res.sendFile(__dirname + "/views/sync.html", {"id": req.id});
+  res.render("sync", {"id": req.id});
 });
 
 ///// Socket.io

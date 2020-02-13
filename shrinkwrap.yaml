@@ -1,4 +1,5 @@
 dependencies:
+  ejs: 3.0.1
   express: 4.17.1
   socket.io: 2.3.0
 packages:
@@ -154,6 +155,13 @@ packages:
     dev: false
     resolution:
       integrity: sha1-WQxhFWsK4vTwJVcyoViyZrxWsh0=
+  /ejs/3.0.1:
+    dev: false
+    engines:
+      node: '>=0.10.0'
+    requiresBuild: true
+    resolution:
+      integrity: sha512-cuIMtJwxvzumSAkqaaoGY/L6Fc/t6YvoP9/VIaK0V/CyqKLEQ8sqODmYfy/cjXEdZ9+OOL8TecbJu+1RsofGDw==
   /encodeurl/1.0.2:
     dev: false
     engines:
@@ -620,5 +628,6 @@ registry: 'https://registry.npmjs.org/'
 shrinkwrapMinorVersion: 9
 shrinkwrapVersion: 3
 specifiers:
+  ejs: ^3.0.1
   express: ^4.17.1
   socket.io: ^2.3.0
