@@ -17,68 +17,83 @@
     </div>
     <div id="player"></div>
     <script>
-      $(function() {
-        var tag = document.createElement('script');
+      var tag = document.createElement('script');
 
-        tag.src = "https://www.youtube.com/iframe_api";
-        var firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-        var socket = io();
-        var player;
+      var socket = io();
+      var player;
 
-        // WebSocket Event
-        socket.on("user counter", function (data) {
-          $("#watch").text(data);
-        });
-
-        socket.on("all paused", function () {
-          player.pauseVideo();
-        });
-
-        function onYouTubeIframeAPIReady() {
-          player = new YT.Player('player', {
-            height: '360',
-            width: '640',
-            videoId: 'NeiujD2YUo8',
-            playerVars: {
-              start: 20
-            },
-            events: {
-              'onReady': onPlayerReady,
-              'onStateChange': onPlayerStateChange
-            }
-          });      
-        }
-      
-        function onPlayerReady(event) {
-          event.target.playVideo();
-
-          console.log({"Duration": player.getDuration()});
-        }
-      
-        /**
-         * -1 – 未開始        
-         * 0 – 終了          YT.PlayerState.ENDED
-         * 1 – 再生中        YT.PlayerState.PLAYING
-         * 2 – 一時停止       YT.PlayerState.PAUSED
-         * 3 – バッファリング中  YT.PlayerState.BUFFERING
-         * 5 – 頭出し済み      YT.PlayerState.CUED
-         */
-        function onPlayerStateChange(event) {
-          console.log({
-            "CurrentTime": player.getCurrentTime(),
-            "Quality": player.getPlaybackQuality(),
-            "State": event.data
-          });
-          if (event.data == YT.PlayerState.PAUSED) {
-            io.sockets.emit("paused");
+      function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+          height: '360',
+          width: '640',
+          videoId: 'NeiujD2YUo8',
+          playerVars: {
+            start: 0
+          },
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange
           }
+        });      
+      }
+
+      function onPlayerReady(event) {
+        event.target.playVideo();
+
+        console.log({"Duration": player.getDuration()});
+      }
+
+      var paused = false;
+
+      /**
+       * -1 – 未開始        
+       * 0 – 終了          YT.PlayerState.ENDED
+       * 1 – 再生中        YT.PlayerState.PLAYING
+       * 2 – 一時停止       YT.PlayerState.PAUSED
+       * 3 – バッファリング中  YT.PlayerState.BUFFERING
+       * 5 – 頭出し済み      YT.PlayerState.CUED
+       */
+      function onPlayerStateChange(event) {
+        console.log({
+          "CurrentTime": player.getCurrentTime(),
+          "Quality": player.getPlaybackQuality(),
+          "State": event.data
+        });
+
+        switch (event.data) {
+          case YT.PlayerState.PLAYING:
+            if (paused) {
+              socket.emit("playing");
+              paused = false;
+            }
+            break;
+          case YT.PlayerState.PAUSED:
+            socket.emit("paused");
+            paused = true;
+            break;
         }
+      }
       
-        function stopVideo() {
-          player.stopVideo();
-         }
+
+      // WebSocket Event
+      socket.on("user counter", function (data) {
+        console.log("ev user counter");
+        $("#watch").text(data);
+      });
+
+      socket.on("all playing", function() {
+        console.log("ev all playing");
+        player.playVideo();
+        paused = false;
+      });
+      socket.on("all paused", function () {
+        console.log("ev all paused");
+        player.pauseVideo();
+        paused = true;
       });
     </script>
   </body>

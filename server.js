@@ -21,6 +21,9 @@ io.sockets.on("connection", function(socket) {
   counter++;
   io.sockets.emit("user counter", counter);
 
+  socket.on("playing", function() {
+    io.sockets.emit("all playing");
+  })
   socket.on("paused", function() {
     io.sockets.emit("all paused");
   })
