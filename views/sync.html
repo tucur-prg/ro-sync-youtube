@@ -13,9 +13,13 @@
 
   <body>
     <div>
-      視聴中の人数： <span id="watch">0</span>
+      視聴中の人数： <span id="watch">0</span> ID: <span id="sid">-</span>
     </div>
     <div id="player"></div>
+    <button id="test">
+      テスト
+    </button>
+    
     <script>
       var tag = document.createElement('script');
 
@@ -24,6 +28,10 @@
       firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
       var socket = io();
+      $(function() {
+        $("#sid").text(socket.id);
+      })
+
       var player;
 
       function onYouTubeIframeAPIReady() {
@@ -67,19 +75,20 @@
         switch (event.data) {
           case YT.PlayerState.PLAYING:
             if (paused) {
+              console.log("act playing");
               socket.emit("playing", player.getCurrentTime());
               paused = false;
             }
             break;
           case YT.PlayerState.PAUSED:
             if (!paused) {
+              console.log("act paused");
               socket.emit("paused", player.getCurrentTime());
               paused = true;
             }
             break;
         }
       }
-      
 
       // WebSocket Event
       socket.on("user counter", function (data) {

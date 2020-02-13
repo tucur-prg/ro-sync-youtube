@@ -29,15 +29,11 @@ io.sockets.on("connection", function(socket) {
   socket.emit("user counter", counter);
 
   if (master != socket.id) {
-    console.log("join: " + master);
     io.to(master).emit("join", socket.id);
   }
 
   // Event
   socket.on("now", function(data) {
-    console.log("now");
-    console.log(data);
-
     io.to(data.id).emit("connected", {"playerState": data.playerState, "currentTime": data.currentTime});  
   });
   socket.on("playing", function(seek) {
