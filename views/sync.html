@@ -89,6 +89,7 @@
 
       socket.on("all playing", function() {
         console.log("ev all playing");
+        player.seekTo(100, true);
         player.playVideo();
         paused = false;
       });
