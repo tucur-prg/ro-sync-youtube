@@ -25,18 +25,26 @@ io.sockets.on("connection", function(socket) {
   console.log(master + ":" + socket.id);
 
   counter++;
-  io.emit("user counter", counter);
 
+  socket.emit("user counter", counter);
+
+  if (master != socket.id) {
+    socket.to(master).emit("join", socket.id);
+  }
+
+  // Event
+  socket.on("now", function(data) {
+    socket.to(data.id).emit("connected", {"playerState": data.playerState, "currentTime": data.currentTime});  
+  });
   socket.on("playing", function(seek) {
     socket.broadcast.emit("all playing", seek);
   });
   socket.on("paused", function(seek) {
     socket.broadcast.emit("all paused", seek);
   });
-  
   socket.on("disconnect", function() {
     counter--;
-    io.emit("user counter", counter);
+    socket.emit("user counter", counter);
   });
 });
 

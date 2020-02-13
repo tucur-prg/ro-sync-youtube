@@ -42,8 +42,6 @@
       }
 
       function onPlayerReady(event) {
-        socket.emit("ready");
-
 //        event.target.playVideo();
 
         console.log({"Duration": event.target.getDuration()});
@@ -89,6 +87,16 @@
         $("#watch").text(data);
       });
 
+      socket.on("join", function(id) {
+        socket.emit("now", {
+          "id": id,
+          "playerState": player.getPlayerState(),
+          "currentTime": player.getCurrentTime();
+        });
+      });
+      socket.on("connected", function(data) {
+        
+      })
       socket.on("all playing", function(seek) {
         console.log("ev all playing");
         console.log(seek);
