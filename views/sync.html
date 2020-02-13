@@ -84,21 +84,33 @@
       // WebSocket Event
       socket.on("user counter", function (data) {
         console.log("ev user counter");
+
         $("#watch").text(data);
       });
 
       socket.on("join", function(id) {
+        console.log("ev join");
+        console.log(id);
+
         socket.emit("now", {
           "id": id,
           "playerState": player.getPlayerState(),
-          "currentTime": player.getCurrentTime();
+          "currentTime": player.getCurrentTime()
         });
       });
       socket.on("connected", function(data) {
-        
-      })
+        console.log("ev connected");
+        console.log(data);
+
+        player.seekTo(data.currentTime, true);
+        if (data.playerState == PY.PlayerState.PLAYING()) {
+          player.playVideo();
+          paused = false;
+        }
+      });
       socket.on("all playing", function(seek) {
         console.log("ev all playing");
+
         console.log(seek);
         player.seekTo(seek, true);
         player.playVideo();
@@ -106,6 +118,7 @@
       });
       socket.on("all paused", function (seek) {
         console.log("ev all paused");
+
         player.pauseVideo();
         console.log(seek);
         player.seekTo(seek, true);

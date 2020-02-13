@@ -29,12 +29,16 @@ io.sockets.on("connection", function(socket) {
   socket.emit("user counter", counter);
 
   if (master != socket.id) {
-    socket.to(master).emit("join", socket.id);
+    console.log("join: " + master);
+    io.to(master).emit("join", socket.id);
   }
 
   // Event
   socket.on("now", function(data) {
-    socket.to(data.id).emit("connected", {"playerState": data.playerState, "currentTime": data.currentTime});  
+    console.log("now");
+    console.log(data);
+
+    io.to(data.id).emit("connected", {"playerState": data.playerState, "currentTime": data.currentTime});  
   });
   socket.on("playing", function(seek) {
     socket.broadcast.emit("all playing", seek);
