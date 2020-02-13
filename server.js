@@ -12,4 +12,22 @@ app.get("/", function(req, res) {
 });
 app.get("/sync/", function(req, res) {
   res.sendFile(__dirname + "/views/sync.html");
-})
+});
+
+var counter = 0;
+
+// listen for requests :)
+io.sockets.on("connection", function(socket) {  
+  counter++;
+  io.sockets.emit("user counter", counter);
+
+  socket.on("paused", function() {
+    io.sockets.emit("all paused");
+  })
+  
+  socket.on("disconnect", function() {
+    counter--;
+    io.sockets.emit("user counter", counter);
+  });
+});
+
