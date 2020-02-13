@@ -42,12 +42,14 @@
       }
 
       function onPlayerReady(event) {
-        event.target.playVideo();
+        socket.emit("ready");
 
-        console.log({"Duration": player.getDuration()});
+//        event.target.playVideo();
+
+        console.log({"Duration": event.target.getDuration()});
       }
 
-      var paused = false;
+      var paused = true;
 
       /**
        * -1 – 未開始        
@@ -67,13 +69,13 @@
         switch (event.data) {
           case YT.PlayerState.PLAYING:
             if (paused) {
-              socket.emit("playing");
+              socket.emit("playing", player.getCurrentTime());
               paused = false;
             }
             break;
           case YT.PlayerState.PAUSED:
             if (!paused) {
-              socket.emit("paused");
+              socket.emit("paused", player.getCurrentTime());
               paused = true;
             }
             break;
@@ -87,15 +89,18 @@
         $("#watch").text(data);
       });
 
-      socket.on("all playing", function() {
+      socket.on("all playing", function(seek) {
         console.log("ev all playing");
-        player.seekTo(100, true);
+        console.log(seek);
+        player.seekTo(seek, true);
         player.playVideo();
         paused = false;
       });
-      socket.on("all paused", function () {
+      socket.on("all paused", function (seek) {
         console.log("ev all paused");
         player.pauseVideo();
+        console.log(seek);
+        player.seekTo(seek, true);
         paused = true;
       });
     </script>

@@ -15,19 +15,24 @@ app.get("/sync/", function(req, res) {
 });
 
 var counter = 0;
+var master;
 
 // listen for requests :)
 io.sockets.on("connection", function(socket) { 
+  if (!master) {
+    master = socket.id;
+  }
+  console.log(master + ":" + socket.id);
+
   counter++;
-  console.log(counter);
   io.emit("user counter", counter);
 
-  socket.on("playing", function() {
-    socket.broadcast.emit("all playing");
-  })
-  socket.on("paused", function() {
-    socket.broadcast.emit("all paused");
-  })
+  socket.on("playing", function(seek) {
+    socket.broadcast.emit("all playing", seek);
+  });
+  socket.on("paused", function(seek) {
+    socket.broadcast.emit("all paused", seek);
+  });
   
   socket.on("disconnect", function() {
     counter--;
