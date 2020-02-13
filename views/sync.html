@@ -16,7 +16,6 @@
       視聴者：<span id="watch">0</span>
     </div>
     <div id="player"></div>
-    <div id="debug"></div>
     <script>
       var tag = document.createElement('script');
 
@@ -27,25 +26,40 @@
       var player;
       function onYouTubeIframeAPIReady() {
         player = new YT.Player('player', {
-          startSeconds: 20,
           height: '360',
           width: '640',
           videoId: 'NeiujD2YUo8',
+          playerVars: {
+            start: 20
+          },
           events: {
             'onReady': onPlayerReady,
             'onStateChange': onPlayerStateChange
           }
         });
+        
       }
       
       function onPlayerReady(event) {
         event.target.playVideo();
+
+        console.log(player.getDuration());
+        console.log(player.getCurrentTime());
+        console.log(player.getPlaybackQuality());
       }
       
       var done = false;
-      var _debug = $("#debug");
+      /**
+       * -1 – 未開始        
+       * 0 – 終了          YT.PlayerState.ENDED
+       * 1 – 再生中        YT.PlayerState.PLAYING
+       * 2 – 一時停止       YT.PlayerState.PAUSED
+       * 3 – バッファリング中  YT.PlayerState.BUFFERING
+       * 5 – 頭出し済み      YT.PlayerState.CUED
+       */
       function onPlayerStateChange(event) {
-        _debug.text(100);
+        console.log(event);
+
         if (event.data == YT.PlayerState.PLAYING && !done) {
           done = true;
         }
