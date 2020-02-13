@@ -72,8 +72,10 @@
             }
             break;
           case YT.PlayerState.PAUSED:
-            socket.emit("paused");
-            paused = true;
+            if (!paused) {
+              socket.emit("paused");
+              paused = true;
+            }
             break;
         }
       }

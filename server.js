@@ -23,10 +23,10 @@ io.sockets.on("connection", function(socket) {
   io.emit("user counter", counter);
 
   socket.on("playing", function() {
-    io.broadcast.emit("all playing");
+    socket.broadcast.emit("all playing");
   })
   socket.on("paused", function() {
-    io.broadcast.emit("all paused");
+    socket.broadcast.emit("all paused");
   })
   
   socket.on("disconnect", function() {
