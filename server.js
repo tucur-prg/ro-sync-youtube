@@ -17,20 +17,21 @@ app.get("/sync/", function(req, res) {
 var counter = 0;
 
 // listen for requests :)
-io.sockets.on("connection", function(socket) {  
+io.sockets.on("connection", function(socket) { 
   counter++;
-  io.sockets.emit("user counter", counter);
+  console.log(counter);
+  io.emit("user counter", counter);
 
   socket.on("playing", function() {
-    io.sockets.emit("all playing");
+    io.broadcast.emit("all playing");
   })
   socket.on("paused", function() {
-    io.sockets.emit("all paused");
+    io.broadcast.emit("all paused");
   })
   
   socket.on("disconnect", function() {
     counter--;
-    io.sockets.emit("user counter", counter);
+    io.emit("user counter", counter);
   });
 });
 
