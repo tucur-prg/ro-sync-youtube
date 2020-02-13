@@ -11,7 +11,7 @@ app.use(express.static("public"));
 app.get("/", function(req, res) {
   res.sendFile(__dirname + "/views/index.html");
 });
-app.get("/sync/", function(req, res) {
+app.get("/redirect", function(req, res) {
   var id;
 
   console.log(req.query.q);
@@ -26,12 +26,18 @@ app.get("/sync/", function(req, res) {
     id = req.query.q;
   }
 
-  if (id) {
-    res.sendFile(__dirname + "/views/sync.html", {"id": id});
-  } else {
+  if (!id) {
     res.sendFile(__dirname + "/views/notfound.html");    
   }
+
+  res.redirect('/sync/' + id)
 });
+app.get("/sync/:id", function(req, res) {
+
+  res.sendFile(__dirname + "/views/sync.html", {"id": req.id});
+});
+
+///// Socket.io
 
 var counter = 0;
 var master;
