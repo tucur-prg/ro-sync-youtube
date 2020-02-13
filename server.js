@@ -1,3 +1,4 @@
+const querystring = require('querystring');
 
 const express = require("express");
 const app = express();
@@ -11,6 +12,20 @@ app.get("/", function(req, res) {
   res.sendFile(__dirname + "/views/index.html");
 });
 app.get("/sync/", function(req, res) {
+  var id;
+
+  console.log(req.query.q);
+  if (req.query.q.indexOf("?") !== -1) {
+    var q = req.query.q.split("?");
+    var parse = querystring.parse(q[1]);
+    id = parse.v;
+  } else if (req.query.q.indexOf("https://youtu.be/") !== -1) {
+    var parse = req.query.q.split("/");
+    id = parse[3];
+  }
+  
+  console.log(id);
+
   res.sendFile(__dirname + "/views/sync.html");
 });
 
