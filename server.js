@@ -22,10 +22,9 @@ io.sockets.on("connection", function(socket) {
   counter++;
 
   if (counter == 1) {
+    console.log("master: " + socket.id);
     master = socket.id;
   }
-  console.log(counter);
-  console.log(master + ":" + socket.id);
 
   socket.emit("user counter", counter);
 
@@ -35,7 +34,6 @@ io.sockets.on("connection", function(socket) {
     io.to(master).emit("join", socket.id);
   });
   socket.on("now", function(data) {
-    console.log(data);
     io.to(data.id).emit("connected", {"playerState": data.playerState, "currentTime": data.currentTime});  
   });
   socket.on("playing", function(seek) {

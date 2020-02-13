@@ -16,16 +16,8 @@
       視聴中の人数： <span id="watch">0</span> ID: <span id="sid">-</span>
     </div>
     <div id="player"></div>
-    <button id="test">
-      test
-    </button>
     
     <script>
-      $(function() {
-        $("#test").click(function() {
-          player.seekTo(300, true);
-        });
-      });
       var tag = document.createElement('script');
 
       tag.src = "https://www.youtube.com/iframe_api";
@@ -52,8 +44,6 @@
       }
 
       function onPlayerReady(event) {
-//        console.log({"Duration": event.target.getDuration()});
-
         socket.emit("to_master");
       }
 
@@ -92,15 +82,12 @@
 
       // WebSocket Event
       socket.on("user counter", function (data) {
-        console.log("ev user counter");
-
         $("#sid").text(socket.id);
         $("#watch").text(data);
       });
 
       socket.on("join", function(id) {
-        console.log("ev join");
-        console.log(id);
+        console.log("ev join " + id);
 
         socket.emit("now", {
           "id": id,
@@ -110,19 +97,16 @@
       });
       socket.on("connected", function(data) {
         console.log("ev connected");
-        console.log(data);
-        player.seekTo(data.currentTime, true);
-/*
-        if (data.playerState == PY.PlayerState.PLAYING()) {
+
+        if (data.playerState == YT.PlayerState.PLAYING) {
+          player.seekTo(data.currentTime, true);
           player.playVideo();
           paused = false;
         }
-*/
       });
       socket.on("all playing", function(seek) {
         console.log("ev all playing");
 
-        console.log(seek);
         player.seekTo(seek, true);
         player.playVideo();
         paused = false;
@@ -131,7 +115,6 @@
         console.log("ev all paused");
 
         player.pauseVideo();
-        console.log(seek);
         player.seekTo(seek, true);
         paused = true;
       });
