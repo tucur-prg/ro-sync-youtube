@@ -17,15 +17,14 @@
     </div>
     <div id="player"></div>
     <button id="test">
-      テスト
+      test
     </button>
     
     <script>
       $(function() {
-        $("#test").click(function (ev) {
-          socket.emit("master");
-          console.log(socket);
-        })
+        $("#test").click(function() {
+          player.seekTo(300, true);
+        });
       });
       var tag = document.createElement('script');
 
@@ -34,8 +33,8 @@
       firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
       var socket = io();
-
       var player;
+      var paused = true;
 
       function onYouTubeIframeAPIReady() {
         player = new YT.Player('player', {
@@ -53,12 +52,10 @@
       }
 
       function onPlayerReady(event) {
-//        event.target.playVideo();
+//        console.log({"Duration": event.target.getDuration()});
 
-        console.log({"Duration": event.target.getDuration()});
+        socket.emit("to_master");
       }
-
-      var paused = true;
 
       /**
        * -1 – 未開始        
@@ -114,12 +111,13 @@
       socket.on("connected", function(data) {
         console.log("ev connected");
         console.log(data);
-
         player.seekTo(data.currentTime, true);
+/*
         if (data.playerState == PY.PlayerState.PLAYING()) {
           player.playVideo();
           paused = false;
         }
+*/
       });
       socket.on("all playing", function(seek) {
         console.log("ev all playing");

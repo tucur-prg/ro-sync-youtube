@@ -24,22 +24,19 @@ io.sockets.on("connection", function(socket) {
   if (counter == 1) {
     master = socket.id;
   }
+  console.log(counter);
   console.log(master + ":" + socket.id);
 
   socket.emit("user counter", counter);
-  /*
-  if (master != socket.id) {
-    io.to(master).emit("join", socket.id);
-  }
-  */
-  socket.on("master", function() {
+
+  // Event
+  socket.on("to_master", function() {
     console.log("join: " + socket.id);
     io.to(master).emit("join", socket.id);
   });
-
-  // Event
   socket.on("now", function(data) {
-//    io.to(data.id).emit("connected", {"playerState": data.playerState, "currentTime": data.currentTime});  
+    console.log(data);
+    io.to(data.id).emit("connected", {"playerState": data.playerState, "currentTime": data.currentTime});  
   });
   socket.on("playing", function(seek) {
     socket.broadcast.emit("all playing", seek);
