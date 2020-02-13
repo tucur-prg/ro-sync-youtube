@@ -43,12 +43,9 @@
       function onPlayerReady(event) {
         event.target.playVideo();
 
-        console.log(player.getDuration());
-        console.log(player.getCurrentTime());
-        console.log(player.getPlaybackQuality());
+        console.log({"Duration": player.getDuration()});
       }
       
-      var done = false;
       /**
        * -1 – 未開始        
        * 0 – 終了          YT.PlayerState.ENDED
@@ -58,11 +55,11 @@
        * 5 – 頭出し済み      YT.PlayerState.CUED
        */
       function onPlayerStateChange(event) {
-        console.log(event);
-
-        if (event.data == YT.PlayerState.PLAYING && !done) {
-          done = true;
-        }
+        console.log({
+          "CurrentTime": player.getCurrentTime(),
+          "Quality": player.getPlaybackQuality(),
+          "State": event.data
+        });
       }
       
       function stopVideo() {
