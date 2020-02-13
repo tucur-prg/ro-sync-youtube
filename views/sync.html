@@ -6,12 +6,54 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>    
   </head>
 
   <body>
     <div>
       視聴者：<span id="watch">0</span>
     </div>
-    <iframe width="560" height="315" src="https://www.youtube.com/embed/NeiujD2YUo8" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <div id="player"></div>
+    <div id="debug"></div>
+    <script>
+      var tag = document.createElement('script');
+
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      
+      var player;
+      function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+          startSeconds: 20,
+          height: '360',
+          width: '640',
+          videoId: 'NeiujD2YUo8',
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange
+          }
+        });
+      }
+      
+      function onPlayerReady(event) {
+        event.target.playVideo();
+      }
+      
+      var done = false;
+      var _debug = $("#debug");
+      function onPlayerStateChange(event) {
+        _debug.text(100);
+        if (event.data == YT.PlayerState.PLAYING && !done) {
+          done = true;
+        }
+      }
+      
+      function stopVideo() {
+        player.stopVideo();
+      }
+    </script>
   </body>
 </html>
