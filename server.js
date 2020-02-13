@@ -34,8 +34,8 @@ app.get("/redirect", function(req, res) {
   res.redirect('/sync/' + id)
 });
 app.get("/sync/:id", function(req, res) {
-
-  res.render("sync", {"id": req.id});
+  console.log(req.params);
+  res.render("sync", {"videoId": req.params.id});
 });
 
 ///// Socket.io

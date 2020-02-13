@@ -13,9 +13,9 @@
 
   <body>
     <div>
-      視聴中の人数： <span id="watch">0</span>
-      ID: <span id="sid">-</span>
-      Movie: <span><%= id %></span>
+      視聴中の人数： <span id="watch">0</span><br>
+      UserID: <span id="sid">-</span><br>
+      Movie: <span><%= videoId %></span>
     </div>
     <div id="player"></div>
     
@@ -34,7 +34,7 @@
         player = new YT.Player('player', {
           height: '360',
           width: '640',
-          videoId: 'NeiujD2YUo8',
+          videoId: '<%= videoId %>',
           playerVars: {
             start: 1
           },
