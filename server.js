@@ -19,22 +19,27 @@ var master;
 
 // listen for requests :)
 io.sockets.on("connection", function(socket) { 
-  if (!master) {
+  counter++;
+
+  if (counter == 1) {
     master = socket.id;
   }
   console.log(master + ":" + socket.id);
 
-  counter++;
-
   socket.emit("user counter", counter);
-
+  /*
   if (master != socket.id) {
     io.to(master).emit("join", socket.id);
   }
+  */
+  socket.on("master", function() {
+    console.log("join: " + socket.id);
+    io.to(master).emit("join", socket.id);
+  });
 
   // Event
   socket.on("now", function(data) {
-    io.to(data.id).emit("connected", {"playerState": data.playerState, "currentTime": data.currentTime});  
+//    io.to(data.id).emit("connected", {"playerState": data.playerState, "currentTime": data.currentTime});  
   });
   socket.on("playing", function(seek) {
     socket.broadcast.emit("all playing", seek);

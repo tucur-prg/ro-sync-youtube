@@ -21,6 +21,12 @@
     </button>
     
     <script>
+      $(function() {
+        $("#test").click(function (ev) {
+          socket.emit("master");
+          console.log(socket);
+        })
+      });
       var tag = document.createElement('script');
 
       tag.src = "https://www.youtube.com/iframe_api";
@@ -28,9 +34,6 @@
       firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
       var socket = io();
-      $(function() {
-        $("#sid").text(socket.id);
-      })
 
       var player;
 
@@ -94,6 +97,7 @@
       socket.on("user counter", function (data) {
         console.log("ev user counter");
 
+        $("#sid").text(socket.id);
         $("#watch").text(data);
       });
 
