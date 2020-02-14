@@ -75,6 +75,10 @@
         });
 
         switch (event.data) {
+          case YT.PlayerState.ENDED:
+            $("#state").text("終了");
+            paused = true;
+            break;
           case YT.PlayerState.PLAYING:
             if (paused) {
               console.log("emit playing");
