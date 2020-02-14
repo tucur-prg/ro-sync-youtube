@@ -9,13 +9,19 @@
 
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>    
+    <style>
+      .spacer {
+        display:inline-block;
+        width:18px;
+      }
+    </style>
   </head>
 
   <body>
     <div>
-      視聴中の人数： <span id="watch">0</span><br>
-      UserID: <span id="sid">-</span><br>
-      Movie: <span><%= videoId %></span>
+      視聴中の人数： <span id="watch">0</span><span class="spacer"></span>同期状況： <span id="state">-</span><br>
+      SessID： <span id="sid">-</span><br>
+      MovieID： <span><%= videoId %></span>
     </div>
     <div id="player"></div>
     
@@ -26,7 +32,9 @@
       var firstScriptTag = document.getElementsByTagName('script')[0];
       firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-      var socket = io();
+      var videoId = '<%= videoId %>';
+
+      var socket = io({query: {room: videoId}});
       var player;
       var paused = true;
 
@@ -34,7 +42,7 @@
         player = new YT.Player('player', {
           height: '360',
           width: '640',
-          videoId: '<%= videoId %>',
+          videoId: videoId,
           playerVars: {
             start: 1
           },
@@ -46,7 +54,8 @@
       }
 
       function onPlayerReady(event) {
-        socket.emit("to_master");
+        console.log("emit player ready");
+        socket.emit("player ready");
       }
 
       /**
@@ -59,23 +68,28 @@
        */
       function onPlayerStateChange(event) {
         console.log({
-          "CurrentTime": player.getCurrentTime(),
-          "Quality": player.getPlaybackQuality(),
-          "State": event.data
+          State: event.data,
+          CurrentTime: player.getCurrentTime(),
+          Quality: player.getPlaybackQuality(),
+          Rate: player.getPlaybackRate()
         });
 
         switch (event.data) {
           case YT.PlayerState.PLAYING:
             if (paused) {
-              console.log("act playing");
-              socket.emit("playing", player.getCurrentTime());
+              console.log("emit playing");
+
+              $("#state").text("再生中");
+              socket.emit("playing", {seek: player.getCurrentTime()});
               paused = false;
             }
             break;
           case YT.PlayerState.PAUSED:
             if (!paused) {
-              console.log("act paused");
-              socket.emit("paused", player.getCurrentTime());
+              console.log("emit paused");
+
+              $("#state").text("停止中");
+              socket.emit("paused", {seek: player.getCurrentTime()});
               paused = true;
             }
             break;
@@ -84,38 +98,51 @@
 
       // WebSocket Event
       socket.on("user counter", function (data) {
+        console.log("on user counter");
+
         $("#sid").text(socket.id);
         $("#watch").text(data);
       });
 
+      // Room Masterのみのイベント
       socket.on("join", function(id) {
-        console.log("ev join " + id);
+        console.log("on join | user " + id);
 
+        console.log("emit now");
         socket.emit("now", {
-          "id": id,
-          "playerState": player.getPlayerState(),
-          "currentTime": player.getCurrentTime()
+          toId: id,
+          playerState: player.getPlayerState(),
+          currentTime: player.getCurrentTime()
         });
       });
+      
+      // 単独イベント
       socket.on("connected", function(data) {
-        console.log("ev connected");
+        console.log("on connected | player state: " + data.playerState);
 
+        $("#state").text("停止中");
+        player.seekTo(data.currentTime, true);
+        player.pauseVideo();
         if (data.playerState == YT.PlayerState.PLAYING) {
-          player.seekTo(data.currentTime, true);
+          $("#state").text("再生中");
           player.playVideo();
           paused = false;
         }
       });
-      socket.on("all playing", function(seek) {
-        console.log("ev all playing");
 
+      // All Users
+      socket.on("broadcast playing", function(seek) {
+        console.log("on broadcast playing");
+
+        $("#state").text("再生中");
         player.seekTo(seek, true);
         player.playVideo();
         paused = false;
       });
-      socket.on("all paused", function (seek) {
-        console.log("ev all paused");
+      socket.on("broadcast paused", function (seek) {
+        console.log("on broadcast paused");
 
+        $("#state").text("停止中");
         player.pauseVideo();
         player.seekTo(seek, true);
         paused = true;
