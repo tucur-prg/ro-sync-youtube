@@ -2,7 +2,7 @@ const querystring = require('querystring');
 
 const express = require("express");
 const app = express();
-const server = app.listen(process.env.PORT);
+const server = app.listen(process.env.PORT, () => console.log("app listening on port " + process.env.PORT));
 
 const io = require("socket.io")(server);
 
@@ -13,15 +13,15 @@ app.get("/", function(req, res) {
   res.sendFile(__dirname + "/views/index.html");
 });
 app.get("/redirect", function(req, res) {
-  var id;
+  let id;
 
   console.log(req.query.q);
   if (req.query.q.indexOf("https://www.youtube.com/") !== -1) {
-    var q = req.query.q.split("?");
-    var parse = querystring.parse(q[1]);
+    let q = req.query.q.split("?");
+    let parse = querystring.parse(q[1]);
     id = parse.v;
   } else if (req.query.q.indexOf("https://youtu.be/") !== -1) {
-    var parse = req.query.q.split("/");
+    let parse = req.query.q.split("/");
     id = parse[3];
   } else {
     id = req.query.q;
@@ -31,46 +31,94 @@ app.get("/redirect", function(req, res) {
     res.sendFile(__dirname + "/views/notfound.html");    
   }
 
-  res.redirect('/sync/' + id)
+  res.redirect("/sync/" + id);
 });
-app.get("/sync/:id", function(req, res) {
-  console.log(req.params);
-  res.render("sync", {"videoId": req.params.id});
+app.get("/sync/:videoId", function(req, res) {
+  res.render("sync", {
+    videoId: req.params.videoId
+  });
 });
 
 ///// Socket.io
 
-var counter = 0;
-var master;
+let counter = {};
+let store = {};
 
 // listen for requests :)
-io.sockets.on("connection", function(socket) { 
-  counter++;
+const sync = io.sockets.on("connection", function(socket) { 
+  let room = socket.handshake.query.room;
+  console.log("on connection | user: " + socket.id + " | room: " + room);
 
-  if (counter == 1) {
-    console.log("master: " + socket.id);
-    master = socket.id;
+  if (!counter[room]) {
+    counter[room] = 0;
   }
 
-  socket.emit("user counter", counter);
+  socket.join(room, () => {
+    console.log("join room: " + room);
 
+    counter[room]++;
+
+    if (!store[room]) {
+      console.log("your are master: " + socket.id);
+      store[room] = socket.id;
+    }
+
+    console.log("emit user counter");
+    sync.to(room).emit("user counter", counter[room]);
+  });
+  
   // Event
-  socket.on("to_master", function() {
-    console.log("join: " + socket.id);
-    io.to(master).emit("join", socket.id);
+  socket.on("player ready", function(data) {
+    let room = socket.handshake.query.room;
+    console.log("on player ready | user: " + socket.id + " | room: " + room);
+    if (store[room] == socket.id) {
+      return console.log("skip: your are master.");
+    }
+
+    console.log("emmit join");
+    sync.to(store[room]).emit("join", socket.id);
   });
   socket.on("now", function(data) {
-    io.to(data.id).emit("connected", {"playerState": data.playerState, "currentTime": data.currentTime});  
+    let room = socket.handshake.query.room;
+    console.log("on now | user: " + socket.id + " | room: " + room);
+    console.log("seek: " + data.currentTime);
+
+    console.log("to " + data.toId + " emmit connected");
+    sync.to(data.toId).emit("connected", {
+      playerState: data.playerState,
+      currentTime: data.currentTime
+    });  
   });
-  socket.on("playing", function(seek) {
-    socket.broadcast.emit("all playing", seek);
+
+  socket.on("playing", function(data) {
+    let room = socket.handshake.query.room;
+    console.log("on playing | user: " + socket.id + " | room: " + room);
+
+    console.log("emit broadcast playing");
+    socket.broadcast.to(room).emit("broadcast playing", data.seek);
   });
-  socket.on("paused", function(seek) {
-    socket.broadcast.emit("all paused", seek);
+  socket.on("paused", function(data) {
+    let room = socket.handshake.query.room;
+    console.log("on paused | user: " + socket.id + " | room: " + room);
+
+    console.log("emit broadcast paused");
+    socket.broadcast.to(room).emit("broadcast paused", data.seek);
   });
+
   socket.on("disconnect", function() {
-    counter--;
-    socket.emit("user counter", counter);
+    let room = socket.handshake.query.room;
+
+    console.log("on disconnect | user: " + socket.id + " | room: " + room);
+
+    counter[room]--;
+    if (store[room] == socket.id) {
+      delete store[room];
+    }
+
+    socket.leave(room);
+
+    console.log("emit user counter");
+    sync.to(room).emit("user counter", counter[room]);
   });
 });
 
