@@ -65,8 +65,11 @@
       #activity {
         font-size:11px;
       }
-      #activity div:nth-child(odd) {
-        background:#a1a7f9;
+      #activity div {
+        border-bottom:1px solid #ccc;
+      }
+      #activity .my:before {
+        content: "#";
       }
     </style>
   </head>
@@ -75,7 +78,6 @@
     <div>
       視聴中の人数： <span id="watch">0</span><span class="spacer"></span>同期状況： <span id="state">-</span><br>
       SessID： <span id="sid">-</span><br>
-      MovieID： <span><%= videoId %></span>
     </div>
 
     <div class="screen-select">
@@ -111,8 +113,11 @@
 
       var player;
       var paused = true;
-      var sync = false;
-      var rateSync = false;
+      var sync = {
+        play: false,
+        paused: false,
+        rate: false
+      };
 
       var state = {
         "-1": "未開始",
@@ -129,14 +134,15 @@
           width: '640',
           videoId: videoId,
           playerVars: {
-            start: 1
+            start: 1,
+            disablekb: 1
           },
           events: {
             'onReady': onPlayerReady,
             'onStateChange': onPlayerStateChange,
             'onPlaybackRateChange': onPlaybackRateChange
           }
-        });      
+        });
       }
 
       function onPlayerReady(event) {
@@ -160,11 +166,6 @@
           Rate: player.getPlaybackRate()
         });
 
-        if (sync) {
-          sync = false;
-          return false;
-        }
-
         switch (event.data) {
           case YT.PlayerState.ENDED:
             paused = true;
@@ -172,36 +173,48 @@
             $("#state").text("終了");
             break;
           case YT.PlayerState.PLAYING:
+            if (sync['play']) {
+              sync['play'] = false;
+              return false;
+            }
+
             if (paused) {
               console.log("emit playing");
               socket.emit("playing", {seek: player.getCurrentTime()});
               paused = false;
 
               $("#state").text("再生中");
+              $("#activity").prepend("<div class=\"my\">再生を同期しました。</div>");
             }
             break;
           case YT.PlayerState.PAUSED:
+            if (sync['paused']) {
+              sync['paused'] = false;
+              return false;
+            }
+
             if (!paused) {
               console.log("emit paused");
               socket.emit("paused", {seek: player.getCurrentTime()});
               paused = true;
 
               $("#state").text("停止中");
+              $("#activity").prepend("<div class=\"my\">一時停止を同期しました。</div>");
             }
             break;
         }
       }
 
       function onPlaybackRateChange(event) {
-        if (rateSync) {
-          rateSync = false;
+        if (sync['rate']) {
+          sync['rate'] = false;
           return false;
         }
 
         console.log("emit rate change");
         socket.emit("rate change", {rate: event.data});
 
-        $("#activity").prepend("<div>再生速度を " + event.data + " に同期しました。</div>");
+        $("#activity").prepend("<div class=\"my\">再生速度を " + event.data + " に同期しました。</div>");
       }
 
       //// WebSocket Event ////////////////
@@ -218,29 +231,36 @@
           rate: player.getPlaybackRate()
         });
       });
-      
+
       // 単独イベント
       socket.on("connected", function(data) {
         console.log("on connected | player state: " + data.playerState);
 
         player.seekTo(data.currentTime, true);
-        player.pauseVideo();
-
-        $("#state").text("停止中");
 
         if (data.playerState == YT.PlayerState.PLAYING) {
           player.playVideo();
           paused = false;
 
           $("#state").text("再生中");
+
+          sync['play'] = true;
+        } else {
+          player.pauseVideo();
+          paused = true;
+
+          $("#state").text("停止中");
+
+          sync['stop'] = true;        
         }
 
         player.setPlaybackRate(data.rate);
 
-        $("#activity").prepend("<div>" + data.id + "さんの再生速度 " + data.rate + " に同期しました。</div>");
+        $("#activity").prepend("<div>" + data.id + "さんの再生時間 " + Math.floor(data.currentTime / 60) + ":" + Math.floor(data.currentTime % 60) + " に同期しました。</div>");
 
-        sync = true;
-        rateSync = true;
+        if (data.rate != 1) {
+          sync['rate'] = true;
+        }
       });
 
       // All Users
@@ -265,7 +285,7 @@
         player.playVideo();
 
         paused = false;
-        sync = true;
+        sync['play'] = true;
 
         $("#state").text("再生中");
         $("#activity").prepend("<div>" + data.id + "さんが再生を同期しました。</div>");
@@ -277,7 +297,7 @@
         player.pauseVideo();
 
         paused = true;
-        sync = true;
+        sync['paused'] = true;
 
         $("#state").text("停止中");
         $("#activity").prepend("<div>" + data.id + "さんが停止を同期しました。</div>");
@@ -287,7 +307,7 @@
 
         player.setPlaybackRate(data.rate);
 
-        rateSync = true;
+        sync['rate'] = true;
 
         $("#activity").prepend("<div>" + data.id + "さんが再生速度を " + data.rate + " に同期しました。</div>");
       });
