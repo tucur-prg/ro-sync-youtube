@@ -14,6 +14,63 @@
         display:inline-block;
         width:18px;
       }
+      
+      .screen-select {
+        margin:12px 0;
+        font-size:0;
+      }
+      .screen-select input {
+        display:none;
+      }
+      .screen-select label {
+        cursor: pointer;
+      }
+      .screen-select input + span {
+        padding:6px 12px;
+        font-size:16px;
+        border: 1px #ccc;
+        border-style: solid none solid solid;
+        background-color: #eee;
+        background-image: linear-gradient(to bottom, hsl(0,0%,98%) 0%,hsl(0,0%,77%) 100%);
+        color: #777;
+        text-shadow: 1px 1px #fff;
+      }
+      .screen-select input:checked + span {
+        color: #fff;
+        text-shadow: -1px -1px rgba(0,0,0,.3);
+        background-color: #00f;
+        background-image: linear-gradient(to bottom, hsl(214,90%,40%) 0%, hsl(214,90%,70%) 100%);
+        border-color: hsl(214, 90%, 60%);
+        box-shadow: 3px 2px 10px rgba(0,0,0,.2) inset, -3px 2px 10px rgba(0,0,0,.2) inset;
+      }
+      .screen-select label:first-child span {
+        border-radius:6px 0 0 6px;
+      }
+      .screen-select label:last-child span {
+        border-radius:0 6px 6px 0;
+        border-right-style: solid;
+      }
+      
+      .flex {
+        display:flex;
+      }
+      .flex .flex-left {
+        flex:0;
+      }
+      .flex .flex-right {
+        flex:3;
+        padding:0 6px;
+      }
+      
+      #activity {
+        font-size:11px;
+      }
+      #activity div {
+        border-bottom:1px solid #ccc;
+      }
+      #activity .my:before {
+        content: "#";
+      }
     </style>
   </head>
 
@@ -21,9 +78,27 @@
     <div>
       視聴中の人数： <span id="watch">0</span><span class="spacer"></span>同期状況： <span id="state">-</span><br>
       SessID： <span id="sid">-</span><br>
-      MovieID： <span><%= videoId %></span>
     </div>
-    <div id="player"></div>
+
+    <div class="screen-select">
+      <label><input type="radio" name="screen" value="480,270"><span>480 x 270</span></label>
+      <label><input type="radio" name="screen" value="640,360" checked><span>640 x 360</span></label>
+      <label><input type="radio" name="screen" value="960,540"><span>960 x 540</span></label>
+      <label><input type="radio" name="screen" value="1280,720"><span>1280 x 720</span></label>
+    </div>
+
+    <div class="flex">
+      <div class="flex-left">
+        <div id="player"></div>
+        <div style="padding-top:12px;">
+          視聴中の操作は他の視聴者に影響がでるので、用法をお守りの上おつかいください！<br>
+          音量、画質、画面サイズに関しては同期されないのでご自由に操作できます。
+        </div>
+      </div>
+      <div class="flex-right">
+        <div id="activity"></div>
+      </div>
+    </div>
     
     <script>
       var tag = document.createElement('script');
@@ -35,8 +110,23 @@
       var videoId = '<%= videoId %>';
 
       var socket = io({query: {room: videoId}});
+
       var player;
       var paused = true;
+      var sync = {
+        play: false,
+        paused: false,
+        rate: false
+      };
+
+      var state = {
+        "-1": "未開始",
+        0: "終了",
+        1: "再生中",
+        2: "一時停止",
+        3: "バッファリング中",
+        5: "頭出し済み"
+      };
 
       function onYouTubeIframeAPIReady() {
         player = new YT.Player('player', {
@@ -44,13 +134,15 @@
           width: '640',
           videoId: videoId,
           playerVars: {
-            start: 1
+            start: 1,
+            disablekb: 1
           },
           events: {
             'onReady': onPlayerReady,
-            'onStateChange': onPlayerStateChange
+            'onStateChange': onPlayerStateChange,
+            'onPlaybackRateChange': onPlaybackRateChange
           }
-        });      
+        });
       }
 
       function onPlayerReady(event) {
@@ -76,37 +168,56 @@
 
         switch (event.data) {
           case YT.PlayerState.ENDED:
-            $("#state").text("終了");
             paused = true;
+
+            $("#state").text("終了");
             break;
           case YT.PlayerState.PLAYING:
+            if (sync['play']) {
+              sync['play'] = false;
+              return false;
+            }
+
             if (paused) {
               console.log("emit playing");
-
-              $("#state").text("再生中");
               socket.emit("playing", {seek: player.getCurrentTime()});
               paused = false;
+
+              $("#state").text("再生中");
+              $("#activity").prepend("<div class=\"my\">再生を同期しました。</div>");
             }
             break;
           case YT.PlayerState.PAUSED:
+            if (sync['paused']) {
+              sync['paused'] = false;
+              return false;
+            }
+
             if (!paused) {
               console.log("emit paused");
-
-              $("#state").text("停止中");
               socket.emit("paused", {seek: player.getCurrentTime()});
               paused = true;
+
+              $("#state").text("停止中");
+              $("#activity").prepend("<div class=\"my\">一時停止を同期しました。</div>");
             }
             break;
         }
       }
 
-      // WebSocket Event
-      socket.on("user counter", function (data) {
-        console.log("on user counter");
+      function onPlaybackRateChange(event) {
+        if (sync['rate']) {
+          sync['rate'] = false;
+          return false;
+        }
 
-        $("#sid").text(socket.id);
-        $("#watch").text(data);
-      });
+        console.log("emit rate change");
+        socket.emit("rate change", {rate: event.data});
+
+        $("#activity").prepend("<div class=\"my\">再生速度を " + event.data + " に同期しました。</div>");
+      }
+
+      //// WebSocket Event ////////////////
 
       // Room Masterのみのイベント
       socket.on("join", function(id) {
@@ -116,40 +227,98 @@
         socket.emit("now", {
           toId: id,
           playerState: player.getPlayerState(),
-          currentTime: player.getCurrentTime()
+          currentTime: player.getCurrentTime(),
+          rate: player.getPlaybackRate()
         });
       });
-      
+
       // 単独イベント
       socket.on("connected", function(data) {
         console.log("on connected | player state: " + data.playerState);
 
-        $("#state").text("停止中");
         player.seekTo(data.currentTime, true);
-        player.pauseVideo();
+
         if (data.playerState == YT.PlayerState.PLAYING) {
-          $("#state").text("再生中");
           player.playVideo();
           paused = false;
+
+          $("#state").text("再生中");
+
+          sync['play'] = true;
+        } else {
+          player.pauseVideo();
+          paused = true;
+
+          $("#state").text("停止中");
+
+          sync['stop'] = true;        
+        }
+
+        player.setPlaybackRate(data.rate);
+
+        $("#activity").prepend("<div>" + data.id + "さんの再生時間 " + Math.floor(data.currentTime / 60) + ":" + Math.floor(data.currentTime % 60) + " に同期しました。</div>");
+
+        if (data.rate != 1) {
+          sync['rate'] = true;
         }
       });
 
       // All Users
-      socket.on("broadcast playing", function(seek) {
+      socket.on("user count", function (data) {
+        console.log("on user count");
+
+        $("#sid").text(socket.id);
+        $("#watch").text(data.count);
+        $("#activity").prepend("<div>" + data.id + "さんが入室しました。</div>");
+      });
+      socket.on("dis user count", function (data) {
+        console.log("on dis user count");
+
+        $("#watch").text(data.count);
+        $("#activity").prepend("<div>" + data.id + "さんが退出しました。</div>");
+      });
+
+      socket.on("broadcast playing", function(data) {
         console.log("on broadcast playing");
 
-        $("#state").text("再生中");
-        player.seekTo(seek, true);
+        player.seekTo(data.seek, true);
         player.playVideo();
+
         paused = false;
+        sync['play'] = true;
+
+        $("#state").text("再生中");
+        $("#activity").prepend("<div>" + data.id + "さんが再生を同期しました。</div>");
       });
-      socket.on("broadcast paused", function (seek) {
+      socket.on("broadcast paused", function (data) {
         console.log("on broadcast paused");
 
-        $("#state").text("停止中");
+        player.seekTo(data.seek, true);
         player.pauseVideo();
-        player.seekTo(seek, true);
+
         paused = true;
+        sync['paused'] = true;
+
+        $("#state").text("停止中");
+        $("#activity").prepend("<div>" + data.id + "さんが停止を同期しました。</div>");
+      });
+      socket.on("broadcast rate change", function (data) {
+        console.log("on broadcast rate chagne");
+
+        player.setPlaybackRate(data.rate);
+
+        sync['rate'] = true;
+
+        $("#activity").prepend("<div>" + data.id + "さんが再生速度を " + data.rate + " に同期しました。</div>");
+      });
+
+      //// jQuery ////////////////////
+      $(function() {
+        $("input[name=screen]").change(function() {
+          var size = $(this).val().split(",");
+
+          player.setSize(size[0], size[1]);
+        });
       });
     </script>
   </body>

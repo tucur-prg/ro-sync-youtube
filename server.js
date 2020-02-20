@@ -41,7 +41,6 @@ app.get("/sync/:videoId", function(req, res) {
 
 ///// Socket.io
 
-let counter = {};
 let store = {};
 
 // listen for requests :)
@@ -49,44 +48,52 @@ const sync = io.sockets.on("connection", function(socket) {
   let room = socket.handshake.query.room;
   console.log("on connection | user: " + socket.id + " | room: " + room);
 
-  if (!counter[room]) {
-    counter[room] = 0;
+  if (!store[room]) {
+    store[room] = {
+      'count': 0,
+      'master': undefined,
+      'member': []
+    }
   }
 
   socket.join(room, () => {
     console.log("join room: " + room);
 
-    counter[room]++;
+    store[room]['count']++;
+    store[room]['member'].push(socket.id);
 
-    if (!store[room]) {
-      console.log("your are master: " + socket.id);
-      store[room] = socket.id;
+    if (!store[room]['master']) {
+      console.log("you are master: " + socket.id);
+      store[room]['master'] = socket.id;
     }
 
-    console.log("emit user counter");
-    sync.to(room).emit("user counter", counter[room]);
+    console.log("emit user count");
+    sync.to(room).emit("user count", {id: socket.id, count: store[room]['count']});
   });
-  
+
   // Event
   socket.on("player ready", function(data) {
     let room = socket.handshake.query.room;
     console.log("on player ready | user: " + socket.id + " | room: " + room);
-    if (store[room] == socket.id) {
-      return console.log("skip: your are master.");
+
+    if (store[room]['master'] == socket.id) {
+      return console.log("skip: you are master.");
     }
 
     console.log("emmit join");
-    sync.to(store[room]).emit("join", socket.id);
+    sync.to(store[room]['master']).emit("join", socket.id);
   });
   socket.on("now", function(data) {
     let room = socket.handshake.query.room;
     console.log("on now | user: " + socket.id + " | room: " + room);
-    console.log("seek: " + data.currentTime);
+    console.log("seek: " + data.currentTime + " | rate: " + data.rate);
 
     console.log("to " + data.toId + " emmit connected");
     sync.to(data.toId).emit("connected", {
+      id: socket.id,
       playerState: data.playerState,
-      currentTime: data.currentTime
+      currentTime: data.currentTime,
+      rate: data.rate
     });  
   });
 
@@ -95,14 +102,21 @@ const sync = io.sockets.on("connection", function(socket) {
     console.log("on playing | user: " + socket.id + " | room: " + room);
 
     console.log("emit broadcast playing");
-    socket.broadcast.to(room).emit("broadcast playing", data.seek);
+    socket.broadcast.to(room).emit("broadcast playing", {id: socket.id, seek: data.seek});
   });
   socket.on("paused", function(data) {
     let room = socket.handshake.query.room;
     console.log("on paused | user: " + socket.id + " | room: " + room);
 
     console.log("emit broadcast paused");
-    socket.broadcast.to(room).emit("broadcast paused", data.seek);
+    socket.broadcast.to(room).emit("broadcast paused", {id: socket.id, seek: data.seek});
+  });
+  socket.on("rate change", function(data) {
+    let room = socket.handshake.query.room;
+    console.log("on rate change | user: " + socket.id + " | room: " + room);
+
+    console.log("emit broadcast rate change");
+    socket.broadcast.to(room).emit("broadcast rate change", {id: socket.id, rate: data.rate});
   });
 
   socket.on("disconnect", function() {
@@ -110,15 +124,20 @@ const sync = io.sockets.on("connection", function(socket) {
 
     console.log("on disconnect | user: " + socket.id + " | room: " + room);
 
-    counter[room]--;
-    if (store[room] == socket.id) {
-      delete store[room];
+    store[room]['count']--;
+    
+    let i = store[room]['member'].indexOf(socket.id);
+    store[room]['member'].splice(i, 1);
+
+    if (store[room]['master'] == socket.id) {
+      console.log("change master: " + store[room]['member'][0]);
+      store[room]['master'] = store[room]['member'][0];
     }
 
     socket.leave(room);
 
-    console.log("emit user counter");
-    sync.to(room).emit("user counter", counter[room]);
+    console.log("emit dis user count");
+    sync.to(room).emit("dis user count", {id: socket.id, count: store[room]['count']});
   });
 });
 
